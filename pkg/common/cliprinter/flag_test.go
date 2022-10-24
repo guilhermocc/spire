@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	agentapi "github.com/spiffe/spire-api-sdk/proto/spire/api/server/agent/v1"
+	commoncli "github.com/spiffe/spire/pkg/common/cli"
 )
 
 func TestAppendFlag(t *testing.T) {
@@ -53,7 +54,7 @@ func TestAppendFlag(t *testing.T) {
 
 			fs := flag.NewFlagSet("testy", flag.ContinueOnError)
 			fs.SetOutput(new(bytes.Buffer))
-			AppendFlag(&p, fs)
+			AppendFlag(&p, fs, nil)
 
 			err := fs.Parse(c.input)
 			switch {
@@ -87,7 +88,7 @@ func TestAppendFlagWithCustomPretty(t *testing.T) {
 	var p Printer
 
 	fs := flag.NewFlagSet("testy", flag.ContinueOnError)
-	AppendFlagWithCustomPretty(&p, fs, nil)
+	AppendFlagWithCustomPretty(&p, fs, nil, nil)
 	err := fs.Parse([]string{""})
 	if err != nil {
 		t.Fatalf("error when configured with nil pretty func: %v", err)
@@ -96,11 +97,11 @@ func TestAppendFlagWithCustomPretty(t *testing.T) {
 	p = nil
 	fs = flag.NewFlagSet("testy", flag.ContinueOnError)
 	invoked := make(chan struct{}, 1)
-	cp := func(_ ...interface{}) error {
+	cp := func(_ *commoncli.Env, _ ...interface{}) error {
 		invoked <- struct{}{}
 		return nil
 	}
-	AppendFlagWithCustomPretty(&p, fs, cp)
+	AppendFlagWithCustomPretty(&p, fs, nil, cp)
 	err = fs.Parse([]string{"-format", "pretty"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

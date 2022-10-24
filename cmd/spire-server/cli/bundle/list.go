@@ -33,7 +33,7 @@ func (c *listCommand) Synopsis() string {
 	return "Lists federated bundle data"
 }
 
-func (c *listCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *listCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 	fs.StringVar(&c.id, "id", "", "SPIFFE ID of the trust domain")
 	fs.StringVar(&c.format, "format", util.FormatPEM, fmt.Sprintf("The format to list federated bundles. Either %q or %q.", util.FormatPEM, util.FormatSPIFFE))
 }

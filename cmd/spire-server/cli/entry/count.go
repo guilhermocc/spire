@@ -50,5 +50,5 @@ func (c *countCommand) Run(ctx context.Context, env *common_cli.Env, serverClien
 	return nil
 }
 
-func (c *countCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *countCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 }

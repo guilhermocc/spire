@@ -40,7 +40,7 @@ func (*createCommand) Synopsis() string {
 	return "Creates a dynamic federation relationship with a foreign trust domain"
 }
 
-func (c *createCommand) AppendFlags(f *flag.FlagSet) {
+func (c *createCommand) AppendFlags(f *flag.FlagSet, env *common_cli.Env) {
 	f.StringVar(&c.path, "data", "", "Path to a file containing federation relationships in JSON format (optional). If set to '-', read the JSON from stdin.")
 	c.config = &federationRelationshipConfig{}
 	appendConfigFlags(c.config, f)

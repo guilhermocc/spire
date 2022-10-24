@@ -36,7 +36,7 @@ func (*deleteCommand) Synopsis() string {
 	return "Deletes registration entries"
 }
 
-func (c *deleteCommand) AppendFlags(f *flag.FlagSet) {
+func (c *deleteCommand) AppendFlags(f *flag.FlagSet, env *common_cli.Env) {
 	f.StringVar(&c.entryID, "entryID", "", "The Registration Entry ID of the record to delete")
 }
 

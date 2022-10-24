@@ -3,7 +3,6 @@ package agent
 import (
 	"errors"
 	"flag"
-	"fmt"
 
 	"github.com/mitchellh/cli"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
@@ -62,21 +61,21 @@ func (c *showCommand) Run(ctx context.Context, env *commoncli.Env, serverClient 
 	return nil
 }
 
-func (c *showCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *showCommand) AppendFlags(fs *flag.FlagSet, env *commoncli.Env) {
 	fs.StringVar(&c.spiffeID, "spiffeID", "", "The SPIFFE ID of the agent to show (agent identity)")
-	cliprinter.AppendFlagWithCustomPretty(&c.printer, fs, prettyPrintAgent)
+	cliprinter.AppendFlagWithCustomPretty(&c.printer, fs, env, prettyPrintAgent)
 }
 
-func prettyPrintAgent(results ...interface{}) error {
+func prettyPrintAgent(env *commoncli.Env, results ...interface{}) error {
 	agent := results[0].(*types.Agent)
 
-	fmt.Printf("Found an attested agent given its SPIFFE ID\n\n")
-	if err := printAgents(agent); err != nil {
+	env.Printf("Found an attested agent given its SPIFFE ID\n\n")
+	if err := printAgents(env, agent); err != nil {
 		return err
 	}
 
 	for _, s := range agent.Selectors {
-		fmt.Printf("Selectors         : %s:%s\n", s.Type, s.Value)
+		env.Printf("Selectors         : %s:%s\n", s.Type, s.Value)
 	}
 	return nil
 }

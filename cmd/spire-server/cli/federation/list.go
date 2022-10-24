@@ -30,7 +30,7 @@ func (c *listCommand) Synopsis() string {
 	return "Lists all dynamic federation relationships"
 }
 
-func (c *listCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *listCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 }
 
 func (c *listCommand) Run(ctx context.Context, env *common_cli.Env, serverClient util.ServerClient) error {

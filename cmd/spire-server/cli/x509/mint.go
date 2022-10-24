@@ -58,7 +58,7 @@ func (c *mintCommand) Synopsis() string {
 	return "Mints an X509-SVID"
 }
 
-func (c *mintCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *mintCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 	fs.StringVar(&c.spiffeID, "spiffeID", "", "SPIFFE ID of the X509-SVID")
 	fs.DurationVar(&c.ttl, "ttl", 0, "TTL of the X509-SVID")
 	fs.Var(&c.dnsNames, "dns", "DNS name that will be included in SVID. Can be used more than once.")

@@ -34,7 +34,7 @@ func (c *deleteCommand) Synopsis() string {
 	return "Deletes a dynamic federation relationship"
 }
 
-func (c *deleteCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *deleteCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 	fs.StringVar(&c.id, "id", "", "SPIFFE ID of the trust domain")
 }
 

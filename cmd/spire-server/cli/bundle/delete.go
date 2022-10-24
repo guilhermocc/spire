@@ -44,7 +44,7 @@ func (c *deleteCommand) Synopsis() string {
 	return "Deletes bundle data"
 }
 
-func (c *deleteCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *deleteCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 	fs.StringVar(&c.id, "id", "", "SPIFFE ID of the trust domain")
 	fs.StringVar(&c.mode, "mode", deleteBundleRestrict, fmt.Sprintf("Deletion mode: one of %s, %s, or %s", deleteBundleRestrict, deleteBundleDelete, deleteBundleDissociate))
 }

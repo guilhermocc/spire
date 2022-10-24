@@ -34,7 +34,7 @@ func (c *refreshCommand) Synopsis() string {
 	return "Refreshes the bundle from the specified federated trust domain"
 }
 
-func (c *refreshCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *refreshCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 	fs.StringVar(&c.id, "id", "", "SPIFFE ID of the trust domain")
 }
 

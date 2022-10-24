@@ -41,7 +41,7 @@ func (c *setCommand) Synopsis() string {
 	return "Creates or updates bundle data"
 }
 
-func (c *setCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *setCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 	fs.StringVar(&c.id, "id", "", "SPIFFE ID of the trust domain")
 	fs.StringVar(&c.path, "path", "", "Path to the bundle data")
 	fs.StringVar(&c.format, "format", util.FormatPEM, fmt.Sprintf("The format of the bundle data. Either %q or %q.", util.FormatPEM, util.FormatSPIFFE))

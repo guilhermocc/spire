@@ -33,7 +33,7 @@ func (c *healthCheckCommand) Synopsis() string {
 	return "Determines server health status"
 }
 
-func (c *healthCheckCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *healthCheckCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 	fs.BoolVar(&c.shallow, "shallow", false, "Perform a less stringent health check")
 	fs.BoolVar(&c.verbose, "verbose", false, "Print verbose information")
 }

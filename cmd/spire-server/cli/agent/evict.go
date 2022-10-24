@@ -3,7 +3,6 @@ package agent
 import (
 	"errors"
 	"flag"
-	"fmt"
 
 	"github.com/mitchellh/cli"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
@@ -61,12 +60,11 @@ func (c *evictCommand) Run(ctx context.Context, _ *commoncli.Env, serverClient u
 	return nil
 }
 
-func (c *evictCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *evictCommand) AppendFlags(fs *flag.FlagSet, env *commoncli.Env) {
 	fs.StringVar(&c.spiffeID, "spiffeID", "", "The SPIFFE ID of the agent to evict (agent identity)")
-	cliprinter.AppendFlagWithCustomPretty(&c.printer, fs, prettyPrintEvictResult)
+	cliprinter.AppendFlagWithCustomPretty(&c.printer, fs, env, prettyPrintEvictResult)
 }
 
-func prettyPrintEvictResult(_ ...interface{}) error {
-	fmt.Println("Agent evicted successfully")
-	return nil
+func prettyPrintEvictResult(env *commoncli.Env, _ ...interface{}) error {
+	return env.Println("Agent evicted successfully")
 }

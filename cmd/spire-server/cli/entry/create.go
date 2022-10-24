@@ -72,7 +72,7 @@ func (*createCommand) Synopsis() string {
 	return "Creates registration entries"
 }
 
-func (c *createCommand) AppendFlags(f *flag.FlagSet) {
+func (c *createCommand) AppendFlags(f *flag.FlagSet, env *common_cli.Env) {
 	f.StringVar(&c.parentID, "parentID", "", "The SPIFFE ID of this record's parent")
 	f.StringVar(&c.spiffeID, "spiffeID", "", "The SPIFFE ID that this record represents")
 	f.IntVar(&c.ttl, "ttl", 0, "The lifetime, in seconds, for SVIDs issued based on this registration entry")

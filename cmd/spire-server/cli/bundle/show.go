@@ -32,7 +32,7 @@ func (c *showCommand) Synopsis() string {
 	return "Prints server CA bundle to stdout"
 }
 
-func (c *showCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *showCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 	fs.StringVar(&c.format, "format", util.FormatPEM, fmt.Sprintf("The format to show the bundle. Either %q or %q.", util.FormatPEM, util.FormatSPIFFE))
 }
 

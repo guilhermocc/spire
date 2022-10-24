@@ -39,7 +39,7 @@ func (c *mintCommand) Synopsis() string {
 	return "Mints a JWT-SVID"
 }
 
-func (c *mintCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *mintCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 	fs.StringVar(&c.spiffeID, "spiffeID", "", "SPIFFE ID of the JWT-SVID")
 	fs.DurationVar(&c.ttl, "ttl", 0, "TTL of the JWT-SVID")
 	fs.Var(&c.audience, "audience", "Audience claim that will be included in the SVID. Can be used more than once.")

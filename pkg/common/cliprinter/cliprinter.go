@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 
+	commoncli "github.com/spiffe/spire/pkg/common/cli"
 	"github.com/spiffe/spire/pkg/common/cliprinter/internal/errorjson"
 	"github.com/spiffe/spire/pkg/common/cliprinter/internal/errorpretty"
 	"github.com/spiffe/spire/pkg/common/cliprinter/internal/protojson"
@@ -26,26 +27,22 @@ type Printer interface {
 // for pre-existing CLI code, such that this code can supply a
 // custom pretty printer that mirrors its current behavior, but
 // still be able to gain formatter functionality for other outputs.
-type CustomPrettyFunc func(...interface{}) error
+type CustomPrettyFunc func(*commoncli.Env, ...interface{}) error
 
 type printer struct {
 	format formatType
-
-	stdout io.Writer
-	stderr io.Writer
-
-	cp CustomPrettyFunc
+	env    *commoncli.Env
+	cp     CustomPrettyFunc
 }
 
-func newPrinter(f formatType) *printer {
-	return newPrinterWithWriters(f, os.Stdout, os.Stderr)
-}
+func newPrinter(f formatType, env *commoncli.Env) *printer {
+	if env == nil {
+		env = commoncli.DefaultEnv
+	}
 
-func newPrinterWithWriters(f formatType, stdout, stderr io.Writer) *printer {
 	return &printer{
 		format: f,
-		stdout: stdout,
-		stderr: stderr,
+		env:    env,
 	}
 }
 
@@ -76,27 +73,27 @@ func (p *printer) MustPrintStruct(msg ...interface{}) {
 func (p *printer) printError(err error) error {
 	switch p.format {
 	case json:
-		return errorjson.Print(err, p.stdout, p.stderr)
+		return errorjson.Print(err, p.env.Stdout, p.env.Stderr)
 	default:
-		return p.printPrettyError(err, p.stdout, p.stderr)
+		return p.printPrettyError(err)
 	}
 }
 
 func (p *printer) printProto(msg ...proto.Message) error {
 	switch p.format {
 	case json:
-		return protojson.Print(msg, p.stdout, p.stderr)
+		return protojson.Print(msg, p.env.Stdout, p.env.Stderr)
 	default:
-		return p.printPrettyProto(msg, p.stdout, p.stderr)
+		return p.printPrettyProto(msg)
 	}
 }
 
 func (p *printer) printStruct(msg ...interface{}) error {
 	switch p.format {
 	case json:
-		return structjson.Print(msg, p.stdout, p.stderr)
+		return structjson.Print(msg, p.env.Stdout, p.env.Stderr)
 	default:
-		return p.printPrettyStruct(msg, p.stdout, p.stderr)
+		return p.printPrettyStruct(msg, p.env.Stdout, p.env.Stderr)
 	}
 }
 
@@ -108,28 +105,28 @@ func (p *printer) setCustomPrettyPrinter(cp CustomPrettyFunc) {
 	p.cp = cp
 }
 
-func (p *printer) printPrettyError(err error, stdout, stderr io.Writer) error {
+func (p *printer) printPrettyError(err error) error {
 	if p.cp != nil {
-		return p.cp(err)
+		return p.cp(p.env, err)
 	}
 
-	return errorpretty.Print(err, stdout, stderr)
+	return errorpretty.Print(err, p.env.Stdout, p.env.Stderr)
 }
-func (p *printer) printPrettyProto(msgs []proto.Message, stdout, stderr io.Writer) error {
+func (p *printer) printPrettyProto(msgs []proto.Message) error {
 	if p.cp != nil {
 		m := []interface{}{}
 		for _, msg := range msgs {
 			m = append(m, msg.(interface{}))
 		}
 
-		return p.cp(m...)
+		return p.cp(p.env, m...)
 	}
 
-	return protopretty.Print(msgs, stdout, stderr)
+	return protopretty.Print(msgs, p.env.Stdout, p.env.Stderr)
 }
 func (p *printer) printPrettyStruct(msg []interface{}, stdout, stderr io.Writer) error {
 	if p.cp != nil {
-		return p.cp(msg...)
+		return p.cp(p.env, msg...)
 	}
 
 	return structpretty.Print(msg, stdout, stderr)

@@ -91,24 +91,24 @@ func (c *listCommand) Run(ctx context.Context, _ *commoncli.Env, serverClient ut
 	return nil
 }
 
-func (c *listCommand) AppendFlags(fs *flag.FlagSet) {
+func (c *listCommand) AppendFlags(fs *flag.FlagSet, env *commoncli.Env) {
 	fs.StringVar(&c.matchSelectorsOn, "matchSelectorsOn", "superset", "The match mode used when filtering by selectors. Options: exact, any, superset and subset")
 	fs.Var(&c.selectors, "selector", "A colon-delimited type:value selector. Can be used more than once")
-	cliprinter.AppendFlagWithCustomPretty(&c.printer, fs, c.prettyPrintAgents)
+	cliprinter.AppendFlagWithCustomPretty(&c.printer, fs, env, c.prettyPrintAgents)
 }
 
-func (c *listCommand) prettyPrintAgents(results ...interface{}) error {
+func (c *listCommand) prettyPrintAgents(env *commoncli.Env, results ...interface{}) error {
 	agents := results[0].(*agentv1.ListAgentsResponse).Agents
 
 	msg := fmt.Sprintf("Found %d attested ", len(agents))
 	msg = util.Pluralizer(msg, "agent", "agents", len(agents))
-	fmt.Printf("%s:\n\n", msg)
-	return printAgents(agents...)
+	env.Printf("%s:\n\n", msg)
+	return printAgents(env, agents...)
 }
 
-func printAgents(agents ...*types.Agent) error {
+func printAgents(env *commoncli.Env, agents ...*types.Agent) error {
 	if len(agents) == 0 {
-		fmt.Printf("No attested agents found\n")
+		env.Printf("No attested agents found\n")
 		return nil
 	}
 
@@ -118,17 +118,17 @@ func printAgents(agents ...*types.Agent) error {
 			return err
 		}
 
-		fmt.Printf("SPIFFE ID         : %s\n", id.String())
-		fmt.Printf("Attestation type  : %s\n", agent.AttestationType)
-		fmt.Printf("Expiration time   : %s\n", time.Unix(agent.X509SvidExpiresAt, 0))
+		env.Printf("SPIFFE ID         : %s\n", id.String())
+		env.Printf("Attestation type  : %s\n", agent.AttestationType)
+		env.Printf("Expiration time   : %s\n", time.Unix(agent.X509SvidExpiresAt, 0))
 
 		// Banned agents will have an empty serial number
 		if agent.Banned {
-			fmt.Printf("Banned            : %t\n", agent.Banned)
+			env.Printf("Banned            : %t\n", agent.Banned)
 		} else {
-			fmt.Printf("Serial number     : %s\n", agent.X509SvidSerialNumber)
+			env.Printf("Serial number     : %s\n", agent.X509SvidSerialNumber)
 		}
-		fmt.Println()
+		env.Println()
 	}
 
 	return nil

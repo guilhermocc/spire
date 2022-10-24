@@ -47,15 +47,14 @@ func (c *countCommand) Run(ctx context.Context, _ *commoncli.Env, serverClient u
 	return nil
 }
 
-func (c *countCommand) AppendFlags(fs *flag.FlagSet) {
-	cliprinter.AppendFlagWithCustomPretty(&c.printer, fs, prettyPrintCount)
+func (c *countCommand) AppendFlags(fs *flag.FlagSet, env *commoncli.Env) {
+	cliprinter.AppendFlagWithCustomPretty(&c.printer, fs, env, prettyPrintCount)
 }
 
-func prettyPrintCount(results ...interface{}) error {
+func prettyPrintCount(env *commoncli.Env, results ...interface{}) error {
 	countResponse := results[0].(*agentv1.CountAgentsResponse)
 	count := int(countResponse.Count)
 	msg := fmt.Sprintf("%d attested ", count)
 	msg = util.Pluralizer(msg, "agent", "agents", count)
-	fmt.Println(msg)
-	return nil
+	return env.Println(msg)
 }

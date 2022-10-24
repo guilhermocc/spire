@@ -61,7 +61,7 @@ func (*showCommand) Synopsis() string {
 	return "Displays configured registration entries"
 }
 
-func (c *showCommand) AppendFlags(f *flag.FlagSet) {
+func (c *showCommand) AppendFlags(f *flag.FlagSet, env *common_cli.Env) {
 	f.StringVar(&c.entryID, "entryID", "", "The Entry ID of the records to show")
 	f.StringVar(&c.parentID, "parentID", "", "The Parent ID of the records to show")
 	f.StringVar(&c.spiffeID, "spiffeID", "", "The SPIFFE ID of the records to show")

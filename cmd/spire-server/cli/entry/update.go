@@ -71,7 +71,7 @@ func (*updateCommand) Synopsis() string {
 	return "Updates registration entries"
 }
 
-func (c *updateCommand) AppendFlags(f *flag.FlagSet) {
+func (c *updateCommand) AppendFlags(f *flag.FlagSet, env *common_cli.Env) {
 	f.StringVar(&c.entryID, "entryID", "", "The Registration Entry ID of the record to update")
 	f.StringVar(&c.parentID, "parentID", "", "The SPIFFE ID of this record's parent")
 	f.StringVar(&c.spiffeID, "spiffeID", "", "The SPIFFE ID that this record represents")

@@ -79,7 +79,7 @@ func getID(spiffeID string) (*types.SPIFFEID, error) {
 	}, nil
 }
 
-func (g *generateCommand) AppendFlags(fs *flag.FlagSet) {
+func (g *generateCommand) AppendFlags(fs *flag.FlagSet, env *common_cli.Env) {
 	fs.IntVar(&g.TTL, "ttl", 600, "Token TTL in seconds")
 	fs.StringVar(&g.SpiffeID, "spiffeID", "", "Additional SPIFFE ID to assign the token owner (optional)")
 }

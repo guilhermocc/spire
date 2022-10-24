@@ -33,7 +33,7 @@ func (c *showCommand) Synopsis() string {
 	return "Shows a dynamic federation relationship"
 }
 
-func (c *showCommand) AppendFlags(f *flag.FlagSet) {
+func (c *showCommand) AppendFlags(f *flag.FlagSet, env *common_cli.Env) {
 	f.StringVar(&c.trustDomain, "trustDomain", "", "The trust domain name of the federation relationship to show")
 }
 

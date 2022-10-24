@@ -56,7 +56,7 @@ func (c *fetchJWTCommand) appendFlags(fs *flag.FlagSet) {
 	fs.Var(&c.audience, "audience", "comma separated list of audience values")
 	fs.StringVar(&c.spiffeID, "spiffeID", "", "SPIFFE ID subject (optional)")
 
-	cliprinter.AppendFlagWithCustomPretty(&c.printer, fs, printPrettyResult)
+	cliprinter.AppendFlagWithCustomPretty(&c.printer, fs, nil, printPrettyResult)
 }
 
 func (c *fetchJWTCommand) fetchJWTSVID(ctx context.Context, client *workloadClient) (*workload.JWTSVIDResponse, error) {
@@ -78,7 +78,7 @@ func (c *fetchJWTCommand) fetchJWTBundles(ctx context.Context, client *workloadC
 	return stream.Recv()
 }
 
-func printPrettyResult(results ...interface{}) error {
+func printPrettyResult(_ *common_cli.Env, results ...interface{}) error {
 	errMsg := "internal error: cli printer; please report this bug"
 
 	svidResp, ok := results[0].(*workload.JWTSVIDResponse)
