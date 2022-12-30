@@ -34,7 +34,7 @@ var (
   -namedPipeName string
     	Pipe name of the SPIRE Server API named pipe (default "\\spire-server\\private\\api")
   -output value
-    	Desired output format (pretty, json); default: pretty.
+    	Desired output format (pretty, json)
 `
 	showUsage = `Usage of agent show:
   -namedPipeName string
