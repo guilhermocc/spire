@@ -1,10 +1,14 @@
 package dscache
 
 import (
+	"crypto/x509"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/andres-erbsen/clock"
+	"github.com/spiffe/go-spiffe/v2/bundle/x509bundle"
+	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/spire/pkg/server/datastore"
 	"github.com/spiffe/spire/proto/spire/common"
 	"golang.org/x/net/context"
@@ -24,6 +28,7 @@ type bundleEntry struct {
 	mu     sync.Mutex
 	ts     time.Time
 	bundle *common.Bundle
+	x509   *x509bundle.Bundle
 }
 
 type DatastoreCache struct {
@@ -43,29 +48,21 @@ func New(ds datastore.DataStore, clock clock.Clock) *DatastoreCache {
 }
 
 func (ds *DatastoreCache) FetchBundle(ctx context.Context, trustDomain string) (*common.Bundle, error) {
-	ds.bundlesMu.Lock()
-	entry, ok := ds.bundles[trustDomain]
-	if !ok {
-		entry = &bundleEntry{}
-		ds.bundles[trustDomain] = entry
+	entry, err := ds.fetchAndUpdateEntry(ctx, trustDomain)
+	if err != nil || entry == nil {
+		return nil, err
 	}
-	ds.bundlesMu.Unlock()
 
-	entry.mu.Lock()
-	defer entry.mu.Unlock()
-	if entry.ts.IsZero() || ds.clock.Now().Sub(entry.ts) >= datastoreCacheExpiry || ctx.Value(useCache{}) == nil {
-		bundle, err := ds.DataStore.FetchBundle(ctx, trustDomain)
-		if err != nil {
-			return nil, err
-		}
-		// Don't cache bundle "misses"
-		if bundle == nil {
-			return nil, nil
-		}
-		entry.bundle = bundle
-		entry.ts = ds.clock.Now()
-	}
 	return entry.bundle, nil
+}
+
+func (ds *DatastoreCache) FetchBundleX509(ctx context.Context, trustDomain string) (*x509bundle.Bundle, error) {
+	entry, err := ds.fetchAndUpdateEntry(ctx, trustDomain)
+	if err != nil || entry == nil {
+		return nil, err
+	}
+
+	return entry.x509, nil
 }
 
 func (ds *DatastoreCache) PruneBundle(ctx context.Context, trustDomainID string, expiresBefore time.Time) (changed bool, err error) {
@@ -103,8 +100,54 @@ func (ds *DatastoreCache) SetBundle(ctx context.Context, b *common.Bundle) (bund
 	return
 }
 
+func (ds *DatastoreCache) fetchAndUpdateEntry(ctx context.Context, trustDomain string) (*bundleEntry, error) {
+	ds.bundlesMu.Lock()
+	entry, ok := ds.bundles[trustDomain]
+	if !ok {
+		entry = &bundleEntry{}
+		ds.bundles[trustDomain] = entry
+	}
+	ds.bundlesMu.Unlock()
+
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+	if entry.ts.IsZero() || ds.clock.Now().Sub(entry.ts) >= datastoreCacheExpiry || ctx.Value(useCache{}) == nil {
+		bundle, err := ds.DataStore.FetchBundle(ctx, trustDomain)
+		if err != nil {
+			return nil, err
+		}
+		// Don't cache bundle "misses"
+		if bundle == nil {
+			return nil, nil
+		}
+		x509Bundle, err := parseBundle(spiffeid.RequireTrustDomainFromString(trustDomain), bundle)
+		if err != nil {
+			return nil, err
+		}
+
+		entry.bundle = bundle
+		entry.x509 = x509Bundle
+		entry.ts = ds.clock.Now()
+	}
+	return entry, nil
+}
+
 func (ds *DatastoreCache) invalidateBundleEntry(trustDomainID string) {
 	ds.bundlesMu.Lock()
 	delete(ds.bundles, trustDomainID)
 	ds.bundlesMu.Unlock()
+}
+
+// parseBundle parses a *x509bundle.Bundle from a *common.bundle.
+func parseBundle(td spiffeid.TrustDomain, commonBundle *common.Bundle) (*x509bundle.Bundle, error) {
+	var caCerts []*x509.Certificate
+	for _, rootCA := range commonBundle.RootCas {
+		rootCACerts, err := x509.ParseCertificates(rootCA.DerBytes)
+		if err != nil {
+			return nil, fmt.Errorf("parse bundle: %w", err)
+		}
+		caCerts = append(caCerts, rootCACerts...)
+	}
+
+	return x509bundle.FromX509Authorities(td, caCerts), nil
 }
