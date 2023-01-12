@@ -24,6 +24,7 @@ import (
 	"github.com/spiffe/spire/pkg/common/util"
 	"github.com/spiffe/spire/pkg/server/authpolicy"
 	"github.com/spiffe/spire/pkg/server/ca"
+	"github.com/spiffe/spire/pkg/server/cache/dscache"
 	"github.com/spiffe/spire/pkg/server/cache/entrycache"
 	"github.com/spiffe/spire/pkg/server/datastore"
 	"github.com/spiffe/spire/pkg/server/endpoints/bundle"
@@ -74,11 +75,10 @@ func TestNew(t *testing.T) {
 	log, _ := test.NewNullLogger()
 	metrics := fakemetrics.New()
 	ds := fakedatastore.New(t)
+	clk := clock.NewMock(t)
 
 	cat := fakeservercatalog.New()
-	cat.SetDataStore(ds)
-
-	clk := clock.NewMock(t)
+	cat.SetDataStore(dscache.New(ds, clk))
 
 	pe, err := authpolicy.DefaultAuthPolicy(ctx)
 	require.NoError(t, err)
@@ -198,13 +198,13 @@ func TestListenAndServe(t *testing.T) {
 	listener, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
 	require.NoError(t, listener.Close())
+	clk := clock.NewMock(t)
 
-	ds := fakedatastore.New(t)
+	ds := dscache.New(fakedatastore.New(t), clk)
 	log, _ := test.NewNullLogger()
 	metrics := fakemetrics.New()
 
 	bundleEndpointServer := newBundleEndpointServer()
-	clk := clock.NewMock(t)
 
 	buildCacheFn := func(ctx context.Context) (entrycache.Cache, error) {
 		return entrycache.BuildFromDataStore(ctx, ds)

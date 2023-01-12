@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
+	"github.com/spiffe/spire/pkg/server/cache/dscache"
 	"github.com/spiffe/spire/pkg/server/cache/entrycache"
 	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
@@ -32,7 +33,6 @@ import (
 	"github.com/spiffe/spire/pkg/common/util"
 	"github.com/spiffe/spire/pkg/server/api/middleware"
 	"github.com/spiffe/spire/pkg/server/authpolicy"
-	"github.com/spiffe/spire/pkg/server/datastore"
 	"github.com/spiffe/spire/pkg/server/svid"
 )
 
@@ -61,7 +61,7 @@ type Endpoints struct {
 	LocalAddr                    net.Addr
 	SVIDObserver                 svid.Observer
 	TrustDomain                  spiffeid.TrustDomain
-	DataStore                    datastore.DataStore
+	DataStore                    *dscache.DatastoreCache
 	APIServers                   APIServers
 	BundleEndpointServer         Server
 	Log                          logrus.FieldLogger
@@ -117,12 +117,17 @@ func New(ctx context.Context, c Config) (*Endpoints, error) {
 		return nil, err
 	}
 
+	ds, ok := c.Catalog.GetDataStore().(*dscache.DatastoreCache)
+	if !ok {
+		return nil, errors.New("datastore cache not provided for new endpoint")
+	}
+
 	return &Endpoints{
 		TCPAddr:                      c.TCPAddr,
 		LocalAddr:                    c.LocalAddr,
 		SVIDObserver:                 c.SVIDObserver,
 		TrustDomain:                  c.TrustDomain,
-		DataStore:                    c.Catalog.GetDataStore(),
+		DataStore:                    ds,
 		APIServers:                   c.makeAPIServers(ef),
 		BundleEndpointServer:         c.maybeMakeBundleEndpointServer(),
 		Log:                          c.Log,
