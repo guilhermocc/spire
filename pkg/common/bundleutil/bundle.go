@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spiffe/go-spiffe/v2/bundle/spiffebundle"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/spire-api-sdk/proto/spire/api/types"
 	"github.com/spiffe/spire/pkg/common/telemetry"
@@ -53,6 +54,41 @@ func BundleFromProto(b *common.Bundle) (*Bundle, error) {
 		rootCAs:        rootCAs,
 		jwtSigningKeys: jwtSigningKeys,
 	}, nil
+}
+
+func SPIFFEBundleToBundle(b *spiffebundle.Bundle) *Bundle {
+	return &Bundle{
+		b: &common.Bundle{
+			TrustDomainId: b.TrustDomain().IDString(),
+		},
+		rootCAs:        b.X509Authorities(),
+		jwtSigningKeys: b.JWTAuthorities(),
+	}
+}
+
+func SPIFFEBundleFromProto(b *common.Bundle) (*spiffebundle.Bundle, error) {
+	rootCAs, err := RootCAsFromBundleProto(b)
+	if err != nil {
+		return nil, err
+	}
+	jwtSigningKeys, err := JWTSigningKeysFromBundleProto(b)
+	if err != nil {
+		return nil, err
+	}
+	bundle := spiffebundle.New(spiffeid.RequireTrustDomainFromString(b.TrustDomainId))
+
+	for _, authority := range rootCAs {
+		bundle.AddX509Authority(authority)
+	}
+
+	for kid, key := range jwtSigningKeys {
+		err := bundle.AddJWTAuthority(kid, key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return bundle, nil
 }
 
 func BundleFromRootCA(trustDomain spiffeid.TrustDomain, rootCA *x509.Certificate) *Bundle {
