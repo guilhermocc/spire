@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spiffe/go-spiffe/v2/bundle/spiffebundle"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/spire-api-sdk/proto/spire/api/types"
 	"github.com/spiffe/spire/pkg/common/telemetry"
@@ -107,6 +108,22 @@ func bundleFromRootCAs(trustDomain spiffeid.TrustDomain, rootCAs ...*x509.Certif
 		b.AppendRootCA(rootCA)
 	}
 	return b
+}
+
+// ToSPIFFEBundle is a temporary function that converts a bundleutil.Bundle to spiffebundle.Bundle. This
+// function should be used only for restricting the scope of the changes in places that use bundleutil.Bundle. It should
+// be removed as soon as we don't have any other reference to bundleutil.Bundle.
+func (b *Bundle) ToSPIFFEBundle() (*spiffebundle.Bundle, error) {
+	td, err := spiffeid.TrustDomainFromString(b.b.TrustDomainId)
+	if err != nil {
+		return nil, err
+	}
+	bundle := spiffebundle.New(td)
+
+	bundle.SetX509Authorities(b.rootCAs)
+	bundle.SetJWTAuthorities(b.jwtSigningKeys)
+
+	return bundle, nil
 }
 
 func (b *Bundle) Proto() *common.Bundle {
