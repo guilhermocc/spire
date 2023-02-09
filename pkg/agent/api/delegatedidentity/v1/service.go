@@ -218,7 +218,7 @@ func (s *Service) SubscribeToX509Bundles(req *delegatedidentityv1.SubscribeToX50
 	// send initial update....
 	caCerts := make(map[string][]byte)
 	for td, bundle := range subscriber.Value() {
-		caCerts[td.IDString()] = marshalBundle(bundle.RootCAs())
+		caCerts[td.IDString()] = marshalBundle(bundle.X509Authorities())
 	}
 
 	resp := &delegatedidentityv1.SubscribeToX509BundlesResponse{
@@ -237,7 +237,7 @@ func (s *Service) SubscribeToX509Bundles(req *delegatedidentityv1.SubscribeToX50
 			}
 
 			for td, bundle := range subscriber.Next() {
-				caCerts[td.IDString()] = marshalBundle(bundle.RootCAs())
+				caCerts[td.IDString()] = marshalBundle(bundle.X509Authorities())
 			}
 
 			resp := &delegatedidentityv1.SubscribeToX509BundlesResponse{
@@ -329,6 +329,7 @@ func (s *Service) SubscribeToJWTBundles(req *delegatedidentityv1.SubscribeToJWTB
 	// send initial update....
 	jwtbundles := make(map[string][]byte)
 	for td, bundle := range subscriber.Value() {
+		bundle := bundleutil.SPIFFEBundleToBundleUtil(bundle)
 		jwksBytes, err := bundleutil.Marshal(bundle, bundleutil.NoX509SVIDKeys(), bundleutil.StandardJWKS())
 		if err != nil {
 			return err
@@ -350,6 +351,7 @@ func (s *Service) SubscribeToJWTBundles(req *delegatedidentityv1.SubscribeToJWTB
 				return err
 			}
 			for td, bundle := range subscriber.Next() {
+				bundle := bundleutil.SPIFFEBundleToBundleUtil(bundle)
 				jwksBytes, err := bundleutil.Marshal(bundle, bundleutil.NoX509SVIDKeys(), bundleutil.StandardJWKS())
 				if err != nil {
 					return err
