@@ -901,7 +901,7 @@ func (s *PluginSuite) TestListAttestedNodes() {
 						ByAttestationType: tt.byAttestationType,
 						BySelectorMatch:   tt.bySelectors,
 						ByBanned:          tt.byBanned,
-						ByCanReattest:     tt.byCanReattest,
+						ByCanReAttest:     tt.byCanReattest,
 						FetchSelectors:    withSelectors,
 					}
 
