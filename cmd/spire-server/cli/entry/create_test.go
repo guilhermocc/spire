@@ -289,6 +289,7 @@ StoreSvid        : true
       },
       "entry": {
         "id": "entry-id",
+		"hint": "",
         "spiffe_id": {
           "trust_domain": "example.org",
           "path": "/workload"
@@ -392,6 +393,7 @@ StoreSvid        : true
       },
       "entry": {
         "id": "entry-id",
+		"hint": "",
         "spiffe_id": {
           "trust_domain": "example.org",
           "path": "/workload"
@@ -503,6 +505,7 @@ StoreSvid        : true
       },
       "entry": {
         "id": "entry-id-1",
+		"hint": "",
         "spiffe_id": {
           "trust_domain": "example.org",
           "path": "/Blog"
@@ -535,6 +538,7 @@ StoreSvid        : true
       },
       "entry": {
         "id": "entry-id-2",
+		"hint": "",
         "spiffe_id": {
           "trust_domain": "example.org",
           "path": "/Database"
@@ -567,6 +571,7 @@ StoreSvid        : true
       },
       "entry": {
         "id": "entry-id-3",
+		"hint": "",
         "spiffe_id": {
           "trust_domain": "example.org",
           "path": "/storesvid"
@@ -630,6 +635,7 @@ Error: failed to create one or more entries
       },
       "entry": {
         "id": "",
+		"hint": "",
         "spiffe_id": {
           "trust_domain": "example.org",
           "path": "/already-exist"
