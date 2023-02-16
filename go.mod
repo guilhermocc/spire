@@ -2,6 +2,9 @@ module github.com/spiffe/spire
 
 go 1.19
 
+// TODO: remove this before the PR is merged
+replace github.com/spiffe/spire-api-sdk => github.com/guilhermocc/spire-api-sdk v0.0.0-20230216125826-6b151858edf9
+
 require (
 	cloud.google.com/go/iam v0.10.0
 	cloud.google.com/go/kms v1.8.0
