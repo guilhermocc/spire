@@ -23,6 +23,7 @@ type listCommand struct {
 	selectors commoncli.StringsFlag
 	// Match used when filtering agents by selectors
 	matchSelectorsOn string
+	canReAttest 	*bool
 	printer          cliprinter.Printer
 }
 
