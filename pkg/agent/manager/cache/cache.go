@@ -722,7 +722,38 @@ func (c *Cache) getRecordsForSelectors(set selectorSet) (recordSet, func()) {
 			}
 		}
 	}
+
+	// Filter out records that have a non-unique hint
+	c.removeEntriesWithNonUniqueHint(records)
+
 	return records, recordsDone
+}
+
+func (c *Cache) removeEntriesWithNonUniqueHint(records recordSet) {
+	hints := make(map[string][]*cacheRecord)
+
+	// Group records by hint
+	for record := range records {
+		if record.entry.Hint == "" {
+			continue
+		}
+		hints[record.entry.Hint] = append(hints[record.entry.Hint], record)
+	}
+
+	for hint, recordsWithSameHint := range hints {
+		// If there is more than one entry with the same hint, remove all but the oldest one
+		if len(recordsWithSameHint) > 1 {
+			sort.Slice(recordsWithSameHint, func(i, j int) bool {
+				return recordsWithSameHint[i].entry.CreatedAt < recordsWithSameHint[j].entry.CreatedAt
+			})
+			for _, conflictingRecord := range recordsWithSameHint[1:] {
+				c.log.
+					WithField(telemetry.RegistrationID, conflictingRecord.entry.EntryId).
+					Warnf("Entry hint %s is not unique among entries, removing entry from response", hint)
+				delete(records, conflictingRecord)
+			}
+		}
+	}
 }
 
 // getSelectorIndexForWrite gets the selector index for the selector. If one

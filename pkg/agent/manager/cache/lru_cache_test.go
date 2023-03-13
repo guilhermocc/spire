@@ -215,7 +215,6 @@ func TestLRUCacheMatchingRegistrationIdentities(t *testing.T) {
 		assert.Equal(t, []*common.RegistrationEntry{reg2, reg3, reg4, reg5},
 			cache.MatchingRegistrationEntries(makeSelectors("A", "B", "C", "D", "E", "F")))
 	})
-
 }
 
 func TestLRUCacheCountSVIDs(t *testing.T) {
