@@ -20,70 +20,210 @@ import (
 
 func TestLRUCacheFetchWorkloadUpdate(t *testing.T) {
 	cache := newTestLRUCache(t)
-	// populate the cache with FOO and BAR without SVIDS
-	foo := makeRegistrationEntry("FOO", "A")
-	bar := makeRegistrationEntry("BAR", "B")
-	bar.FederatesWith = makeFederatesWith(otherBundleV1)
-	updateEntries := &UpdateEntries{
-		Bundles:             makeBundles(bundleV1, otherBundleV1),
-		RegistrationEntries: makeRegistrationEntries(foo, bar),
-	}
-	cache.UpdateEntries(updateEntries, nil)
 
-	workloadUpdate := cache.FetchWorkloadUpdate(makeSelectors("A", "B"))
-	assert.Len(t, workloadUpdate.Identities, 0, "identities should not be returned that don't have SVIDs")
+	// populate the cache with entries without SVIDS
+	reg1 := makeRegistrationEntry("REG1", time.Now(), "internal", "A")
+	reg1.FederatesWith = makeFederatesWith(otherBundleV1)
+	reg2 := makeRegistrationEntry("REG2", time.Now().Add(2*time.Hour), "external", "B")
+	reg3 := makeRegistrationEntry("REG3", time.Now().Add(3*time.Hour), "internal", "C")
+	reg4 := makeRegistrationEntry("REG4", time.Now().Add(4*time.Hour), "", "D")
+	reg5 := makeRegistrationEntry("REG5", time.Now().Add(5*time.Hour), "", "E")
 
+	// check empty result
+	assert.Empty(t, cache.FetchWorkloadUpdate(makeSelectors("A", "B", "C", "D", "E", "F")).Identities)
+
+	t.Run("skip identities with no svids", func(t *testing.T) {
+		updateEntries := &UpdateEntries{
+			Bundles:             makeBundles(bundleV1, otherBundleV1),
+			RegistrationEntries: makeRegistrationEntries(reg1, reg2, reg3, reg4, reg5),
+		}
+		cache.UpdateEntries(updateEntries, nil)
+
+		assert.Empty(t, cache.FetchWorkloadUpdate(makeSelectors("A", "B", "C", "D", "E", "F")).Identities)
+	})
+
+	// Update SVIDs and FetchWorkloadUpdate should now return identities
 	updateSVIDs := &UpdateSVIDs{
-		X509SVIDs: makeX509SVIDs(foo, bar),
+		X509SVIDs: makeX509SVIDs(reg1, reg2, reg3, reg4, reg5),
 	}
 	cache.UpdateSVIDs(updateSVIDs)
 
-	workloadUpdate = cache.FetchWorkloadUpdate(makeSelectors("A", "B"))
-	assert.Equal(t, &WorkloadUpdate{
-		Bundle:           bundleV1,
-		FederatedBundles: makeBundles(otherBundleV1),
-		Identities: []Identity{
-			{Entry: bar},
-			{Entry: foo},
+	t.Run("only return identities with matching selectors", func(t *testing.T) {
+		assert.Equal(t, &WorkloadUpdate{
+			Identities:       []Identity{{Entry: reg1}},
+			Bundle:           bundleV1,
+			FederatedBundles: makeBundles(otherBundleV1),
 		},
-	}, workloadUpdate)
+			cache.FetchWorkloadUpdate(makeSelectors("A")))
+	})
+
+	t.Run("skip identities with non-unique hint", func(t *testing.T) {
+		// Assert that identities with conflicting hint are removed from the response
+		assert.Equal(t, &WorkloadUpdate{
+			Identities:       []Identity{{Entry: reg1}, {Entry: reg2}, {Entry: reg4}, {Entry: reg5}},
+			Bundle:           bundleV1,
+			FederatedBundles: makeBundles(otherBundleV1),
+		},
+			cache.FetchWorkloadUpdate(makeSelectors("A", "B", "C", "D", "E", "F")))
+	})
+
+	reg6 := makeRegistrationEntry("REG0", time.Now().Add(6*time.Hour), "internal", "F")
+
+	t.Run("consistently return the same identity even when new conflicting entry is included", func(t *testing.T) {
+		// Update entries with a new entry with conflicting hint
+		updateEntries := &UpdateEntries{
+			Bundles:             makeBundles(bundleV1),
+			RegistrationEntries: makeRegistrationEntries(reg1, reg2, reg3, reg4, reg5, reg6),
+		}
+		cache.UpdateEntries(updateEntries, nil)
+
+		updateSVIDs = &UpdateSVIDs{
+			X509SVIDs: makeX509SVIDs(reg1, reg2, reg3, reg4, reg5, reg6),
+		}
+		cache.UpdateSVIDs(updateSVIDs)
+
+		a := cache.FetchWorkloadUpdate(makeSelectors("A", "B", "C", "D", "E", "F"))
+		print(a)
+
+		// Assert that reg1 is still returned, and reg3 and reg6 are not
+		assert.Equal(t, &WorkloadUpdate{
+			Identities:       []Identity{{Entry: reg1}, {Entry: reg2}, {Entry: reg4}, {Entry: reg5}},
+			Bundle:           bundleV1,
+			FederatedBundles: map[spiffeid.TrustDomain]*Bundle{},
+		},
+			cache.FetchWorkloadUpdate(makeSelectors("A", "B", "C", "D", "E", "F")))
+	})
+
+	t.Run("return the new identity after the first conflicting is deleted", func(t *testing.T) {
+		updateEntries := &UpdateEntries{
+			Bundles:             makeBundles(bundleV1),
+			RegistrationEntries: makeRegistrationEntries(reg2, reg3, reg4, reg5, reg6),
+		}
+		cache.UpdateEntries(updateEntries, nil)
+
+		updateSVIDs = &UpdateSVIDs{
+			X509SVIDs: makeX509SVIDs(reg2, reg3, reg4, reg5, reg6),
+		}
+		cache.UpdateSVIDs(updateSVIDs)
+
+		// Assert that reg1 is still returned, and reg3 and reg6 are not
+		assert.Equal(t, &WorkloadUpdate{
+			Identities:       []Identity{{Entry: reg2}, {Entry: reg3}, {Entry: reg4}, {Entry: reg5}},
+			Bundle:           bundleV1,
+			FederatedBundles: map[spiffeid.TrustDomain]*Bundle{},
+		},
+			cache.FetchWorkloadUpdate(makeSelectors("A", "B", "C", "D", "E", "F")))
+	})
 }
 
 func TestLRUCacheMatchingRegistrationIdentities(t *testing.T) {
 	cache := newTestLRUCache(t)
 
-	// populate the cache with FOO and BAR without SVIDS
-	foo := makeRegistrationEntry("FOO", "A")
-	bar := makeRegistrationEntry("BAR", "B")
-	updateEntries := &UpdateEntries{
-		Bundles:             makeBundles(bundleV1),
-		RegistrationEntries: makeRegistrationEntries(foo, bar),
-	}
-	cache.UpdateEntries(updateEntries, nil)
+	// populate the cache with entries without SVIDS
+	reg1 := makeRegistrationEntry("REG1", time.Now(), "internal", "A")
+	reg2 := makeRegistrationEntry("REG2", time.Now().Add(2*time.Hour), "external", "B")
+	reg3 := makeRegistrationEntry("REG3", time.Now().Add(3*time.Hour), "internal", "C")
+	reg4 := makeRegistrationEntry("REG4", time.Now().Add(4*time.Hour), "", "D")
+	reg5 := makeRegistrationEntry("REG5", time.Now().Add(5*time.Hour), "", "E")
 
-	assert.Equal(t, []*common.RegistrationEntry{bar, foo},
-		cache.MatchingRegistrationEntries(makeSelectors("A", "B")))
+	t.Run("retrieve entries with no svids", func(t *testing.T) {
+		updateEntries := &UpdateEntries{
+			Bundles:             makeBundles(bundleV1),
+			RegistrationEntries: makeRegistrationEntries(reg1, reg2, reg3, reg4, reg5),
+		}
+		cache.UpdateEntries(updateEntries, nil)
 
-	// Update SVIDs and MatchingRegistrationEntries should return both entries
+		assert.Equal(t, []*common.RegistrationEntry{reg1, reg2, reg4, reg5},
+			cache.MatchingRegistrationEntries(makeSelectors("A", "B", "C", "D", "E", "F")))
+	})
+
+	// Update SVIDs and MatchingRegistrationEntries should now return entries
 	updateSVIDs := &UpdateSVIDs{
-		X509SVIDs: makeX509SVIDs(foo, bar),
+		X509SVIDs: makeX509SVIDs(reg1, reg2, reg3, reg4, reg5),
 	}
 	cache.UpdateSVIDs(updateSVIDs)
-	assert.Equal(t, []*common.RegistrationEntry{bar, foo},
-		cache.MatchingRegistrationEntries(makeSelectors("A", "B")))
+
+	t.Run("retrieve entries with svids", func(t *testing.T) {
+		updateEntries := &UpdateEntries{
+			Bundles:             makeBundles(bundleV1),
+			RegistrationEntries: makeRegistrationEntries(reg1, reg2, reg3, reg4, reg5),
+		}
+		cache.UpdateEntries(updateEntries, nil)
+
+		assert.Equal(t, []*common.RegistrationEntry{reg1, reg2, reg4, reg5},
+			cache.MatchingRegistrationEntries(makeSelectors("A", "B", "C", "D", "E", "F")))
+	})
 
 	// Remove SVIDs and MatchingRegistrationEntries should still return both entries
 	cache.UpdateSVIDs(&UpdateSVIDs{})
-	assert.Equal(t, []*common.RegistrationEntry{bar, foo},
-		cache.MatchingRegistrationEntries(makeSelectors("A", "B")))
+
+	t.Run("still return entries with no svids", func(t *testing.T) {
+		updateEntries := &UpdateEntries{
+			Bundles:             makeBundles(bundleV1),
+			RegistrationEntries: makeRegistrationEntries(reg1, reg2, reg3, reg4, reg5),
+		}
+		cache.UpdateEntries(updateEntries, nil)
+
+		assert.Equal(t, []*common.RegistrationEntry{reg1, reg2, reg4, reg5},
+			cache.MatchingRegistrationEntries(makeSelectors("A", "B", "C", "D", "E", "F")))
+	})
+
+	t.Run("only return entries with matching selectors", func(t *testing.T) {
+		assert.Equal(t, []*common.RegistrationEntry{reg1},
+			cache.MatchingRegistrationEntries(makeSelectors("A")))
+	})
+
+	t.Run("skip entries with non-unique hint", func(t *testing.T) {
+		// Assert that entries with conflicting hint are removed from the response
+		assert.Equal(t, []*common.RegistrationEntry{reg1, reg2, reg4, reg5},
+			cache.MatchingRegistrationEntries(makeSelectors("A", "B", "C", "D", "E", "F")))
+	})
+
+	reg6 := makeRegistrationEntry("REG0", time.Now().Add(6*time.Hour), "internal", "F")
+
+	t.Run("consistently return the same entry even when new conflicting entry is included", func(t *testing.T) {
+		// Update entries with a new entry with conflicting hint
+		updateEntries := &UpdateEntries{
+			Bundles:             makeBundles(bundleV1),
+			RegistrationEntries: makeRegistrationEntries(reg1, reg2, reg3, reg4, reg5, reg6),
+		}
+		cache.UpdateEntries(updateEntries, nil)
+
+		updateSVIDs = &UpdateSVIDs{
+			X509SVIDs: makeX509SVIDs(reg1, reg2, reg3, reg4, reg5, reg6),
+		}
+		cache.UpdateSVIDs(updateSVIDs)
+
+		// Assert that reg1 is still returned, and reg3 and reg6 are not
+		assert.Equal(t, []*common.RegistrationEntry{reg1, reg2, reg4, reg5},
+			cache.MatchingRegistrationEntries(makeSelectors("A", "B", "C", "D", "E", "F")))
+	})
+
+	t.Run("return the new entry after the first conflicting is deleted", func(t *testing.T) {
+		updateEntries := &UpdateEntries{
+			Bundles:             makeBundles(bundleV1),
+			RegistrationEntries: makeRegistrationEntries(reg2, reg3, reg4, reg5, reg6),
+		}
+		cache.UpdateEntries(updateEntries, nil)
+
+		updateSVIDs = &UpdateSVIDs{
+			X509SVIDs: makeX509SVIDs(reg2, reg3, reg4, reg5, reg6),
+		}
+		cache.UpdateSVIDs(updateSVIDs)
+
+		// Assert that reg1 is still returned, and reg3 and reg6 are not
+		assert.Equal(t, []*common.RegistrationEntry{reg2, reg3, reg4, reg5},
+			cache.MatchingRegistrationEntries(makeSelectors("A", "B", "C", "D", "E", "F")))
+	})
+
 }
 
 func TestLRUCacheCountSVIDs(t *testing.T) {
 	cache := newTestLRUCache(t)
 
 	// populate the cache with FOO and BAR without SVIDS
-	foo := makeRegistrationEntry("FOO", "A")
-	bar := makeRegistrationEntry("BAR", "B")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
+	bar := makeRegistrationEntry("BAR", time.Now(), "", "B")
 	updateEntries := &UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo, bar),
@@ -151,7 +291,7 @@ func TestLRUCacheSomeSubscribersNotifiedOnFederatedBundleChange(t *testing.T) {
 
 	// initialize the cache with an entry FOO that has a valid SVID and
 	// selector "A"
-	foo := makeRegistrationEntry("FOO", "A")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo),
@@ -180,7 +320,7 @@ func TestLRUCacheSomeSubscribersNotifiedOnFederatedBundleChange(t *testing.T) {
 
 	// update FOO to federate with otherdomain.test and make sure subA is
 	// notified but not subB.
-	foo = makeRegistrationEntry("FOO", "A")
+	foo = makeRegistrationEntry("FOO", time.Now(), "", "A")
 	foo.FederatesWith = makeFederatesWith(otherBundleV1)
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1, otherBundleV1),
@@ -208,7 +348,7 @@ func TestLRUCacheSomeSubscribersNotifiedOnFederatedBundleChange(t *testing.T) {
 
 	// now drop the federation and make sure subA is again notified and no
 	// longer has the federated bundle.
-	foo = makeRegistrationEntry("FOO", "A")
+	foo = makeRegistrationEntry("FOO", time.Now(), "", "A")
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1, otherBundleV2),
 		RegistrationEntries: makeRegistrationEntries(foo),
@@ -238,10 +378,10 @@ func TestLRUCacheSubscribersGetEntriesWithSelectorSubsets(t *testing.T) {
 	assertWorkloadUpdateEqual(t, subAB, initialUpdate)
 
 	// create entry FOO that will target any subscriber with containing (A)
-	foo := makeRegistrationEntry("FOO", "A")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
 
 	// create entry BAR that will target any subscriber with containing (A,C)
-	bar := makeRegistrationEntry("BAR", "A", "C")
+	bar := makeRegistrationEntry("BAR", time.Now(), "", "A", "C")
 
 	// update the cache with foo and bar
 	cache.UpdateEntries(&UpdateEntries{
@@ -272,7 +412,7 @@ func TestLRUCacheSubscribersGetEntriesWithSelectorSubsets(t *testing.T) {
 func TestLRUCacheSubscriberIsNotNotifiedIfNothingChanges(t *testing.T) {
 	cache := newTestLRUCache(t)
 
-	foo := makeRegistrationEntry("FOO", "A")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo),
@@ -286,7 +426,7 @@ func TestLRUCacheSubscriberIsNotNotifiedIfNothingChanges(t *testing.T) {
 	assertAnyWorkloadUpdate(t, sub)
 
 	// Second update is the same (other than X509SVIDs, which, when set,
-	// always constitute a "change" for the impacted registration entries.
+	// always constitute a "change" for the impacted registration entries).
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo),
@@ -298,7 +438,7 @@ func TestLRUCacheSubscriberIsNotNotifiedIfNothingChanges(t *testing.T) {
 func TestLRUCacheSubscriberNotifiedOnSVIDChanges(t *testing.T) {
 	cache := newTestLRUCache(t)
 
-	foo := makeRegistrationEntry("FOO", "A")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo),
@@ -326,7 +466,7 @@ func TestLRUCacheSubscriberNotificationsOnSelectorChanges(t *testing.T) {
 	cache := newTestLRUCache(t)
 
 	// initialize the cache with a FOO entry with selector A and an SVID
-	foo := makeRegistrationEntry("FOO", "A")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo),
@@ -345,7 +485,7 @@ func TestLRUCacheSubscriberNotificationsOnSelectorChanges(t *testing.T) {
 
 	// update FOO to have selectors (A,B) and make sure the subscriber loses
 	// FOO, since (A,B) is not a subset of the subscriber set (A).
-	foo = makeRegistrationEntry("FOO", "A", "B")
+	foo = makeRegistrationEntry("FOO", time.Now(), "", "A", "B")
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo),
@@ -358,7 +498,7 @@ func TestLRUCacheSubscriberNotificationsOnSelectorChanges(t *testing.T) {
 	})
 
 	// update FOO to drop B and make sure the subscriber regains FOO
-	foo = makeRegistrationEntry("FOO", "A")
+	foo = makeRegistrationEntry("FOO", time.Now(), "", "A")
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo),
@@ -386,8 +526,8 @@ func TestLRUCacheSubscriberNotifiedWhenEntryDropped(t *testing.T) {
 	defer subB.Finish()
 	assertAnyWorkloadUpdate(t, subB)
 
-	foo := makeRegistrationEntry("FOO", "A")
-	bar := makeRegistrationEntry("BAR", "B")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
+	bar := makeRegistrationEntry("BAR", time.Now(), "", "B")
 
 	updateEntries := &UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
@@ -437,7 +577,7 @@ func TestLRUCacheSubscriberNotifiedWhenEntryDropped(t *testing.T) {
 func TestLRUCacheSubscriberOnlyGetsEntriesWithSVID(t *testing.T) {
 	cache := newTestLRUCache(t)
 
-	foo := makeRegistrationEntry("FOO", "A")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
 	updateEntries := &UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo),
@@ -448,7 +588,7 @@ func TestLRUCacheSubscriberOnlyGetsEntriesWithSVID(t *testing.T) {
 	defer sub.Finish()
 	assertNoWorkloadUpdate(t, sub)
 
-	// update to include the SVID and now we should get the update
+	// update to include the SVID, and now we should get the update
 	cache.UpdateSVIDs(&UpdateSVIDs{
 		X509SVIDs: makeX509SVIDs(foo),
 	})
@@ -530,7 +670,7 @@ func TestLRUCacheGetStaleEntries(t *testing.T) {
 	bar := makeRegistrationEntryWithTTL("BAR", 130, 140, "B")
 
 	// Create entry but don't mark it stale from checkSVID method;
-	// it will be marked stale cause it does not have SVID cached
+	// it will be marked stale because it does not have SVID cached
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV2),
 		RegistrationEntries: makeRegistrationEntries(bar),
@@ -581,8 +721,8 @@ func TestLRUCacheGetStaleEntries(t *testing.T) {
 func TestLRUCacheSubscriberNotNotifiedOnDifferentSVIDChanges(t *testing.T) {
 	cache := newTestLRUCache(t)
 
-	foo := makeRegistrationEntry("FOO", "A")
-	bar := makeRegistrationEntry("BAR", "B")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
+	bar := makeRegistrationEntry("BAR", time.Now(), "", "B")
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo, bar),
@@ -606,8 +746,8 @@ func TestLRUCacheSubscriberNotNotifiedOnDifferentSVIDChanges(t *testing.T) {
 func TestLRUCacheSubscriberNotNotifiedOnOverlappingSVIDChanges(t *testing.T) {
 	cache := newTestLRUCache(t)
 
-	foo := makeRegistrationEntry("FOO", "A", "C")
-	bar := makeRegistrationEntry("FOO", "A", "B")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A", "C")
+	bar := makeRegistrationEntry("FOO", time.Now(), "", "A", "B")
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo),
@@ -633,7 +773,7 @@ func TestLRUCacheSVIDCacheExpiry(t *testing.T) {
 	cache := newTestLRUCacheWithConfig(10, clk)
 
 	clk.Add(1 * time.Second)
-	foo := makeRegistrationEntry("FOO", "A")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
 	// validate workload update for foo
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
@@ -651,7 +791,7 @@ func TestLRUCacheSVIDCacheExpiry(t *testing.T) {
 
 	// move clk by 1 sec so that SVID access time will be different
 	clk.Add(1 * time.Second)
-	bar := makeRegistrationEntry("BAR", "B")
+	bar := makeRegistrationEntry("BAR", time.Now(), "", "B")
 	// validate workload update for bar
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
@@ -730,7 +870,7 @@ func TestLRUCacheMaxSVIDCacheSize(t *testing.T) {
 	assert.Equal(t, 10, cache.CountSVIDs())
 
 	// Validate that active subscriber will still get SVID even if SVID count is at maxSvidCacheSize
-	foo := makeRegistrationEntry("FOO", "A")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
 	updateEntries.RegistrationEntries[foo.EntryId] = foo
 
 	subA := cache.NewSubscriber(foo.Selectors)
@@ -759,7 +899,7 @@ func TestSyncSVIDsWithSubscribers(t *testing.T) {
 	assert.Equal(t, 5, cache.CountSVIDs())
 
 	// Update foo but its SVID is not yet cached
-	foo := makeRegistrationEntry("FOO", "A")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
 	updateEntries.RegistrationEntries[foo.EntryId] = foo
 
 	cache.UpdateEntries(updateEntries, nil)
@@ -780,7 +920,7 @@ func TestSyncSVIDsWithSubscribers(t *testing.T) {
 func TestNotify(t *testing.T) {
 	cache := newTestLRUCache(t)
 
-	foo := makeRegistrationEntry("FOO", "A")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo),
@@ -797,8 +937,8 @@ func TestSubscribeToLRUCacheChanges(t *testing.T) {
 	clk := clock.NewMock(t)
 	cache := newTestLRUCacheWithConfig(1, clk)
 
-	foo := makeRegistrationEntry("FOO", "A")
-	bar := makeRegistrationEntry("BAR", "B")
+	foo := makeRegistrationEntry("FOO", time.Now(), "", "A")
+	bar := makeRegistrationEntry("BAR", time.Now(), "", "B")
 	cache.UpdateEntries(&UpdateEntries{
 		Bundles:             makeBundles(bundleV1),
 		RegistrationEntries: makeRegistrationEntries(foo, bar),
