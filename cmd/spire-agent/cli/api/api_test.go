@@ -81,6 +81,7 @@ func TestFetchJWTCommand(t *testing.T) {
 							{
 								SpiffeId: "spiffe://domain1.test",
 								Svid:     encodedSvid1,
+								Hint:     "external",
 							},
 							{
 								SpiffeId: "spiffe://domain2.test",
@@ -92,6 +93,7 @@ func TestFetchJWTCommand(t *testing.T) {
 			},
 			expectedStdoutPretty: []string{
 				fmt.Sprintf("token(spiffe://domain1.test):\n\t%s", encodedSvid1),
+				fmt.Sprintf("hint(spiffe://domain1.test):\n\t%s", "external"),
 				fmt.Sprintf("token(spiffe://domain2.test):\n\t%s", encodedSvid2),
 				fmt.Sprintf("bundle(spiffe://domain1.test):\n\t%s", bundleJWKSBytes),
 				fmt.Sprintf("bundle(spiffe://domain2.test):\n\t%s", bundleJWKSBytes),
@@ -100,10 +102,12 @@ func TestFetchJWTCommand(t *testing.T) {
   {
     "svids": [
       {
+		"hint": "external",
         "spiffe_id": "spiffe://domain1.test",
         "svid": "%s"
       },
       {
+		"hint": "",
         "spiffe_id": "spiffe://domain2.test",
         "svid": "%s"
       }
@@ -219,6 +223,7 @@ func TestFetchX509Command(t *testing.T) {
 								X509Svid:    x509util.DERFromCertificates(svid.Certificates),
 								X509SvidKey: pkcs8FromSigner(t, svid.PrivateKey),
 								Bundle:      x509util.DERFromCertificates(ca.Bundle().X509Authorities()),
+								Hint:        "external",
 							},
 						},
 						Crl:              [][]byte{},
@@ -228,6 +233,7 @@ func TestFetchX509Command(t *testing.T) {
 			},
 			expectedStdoutPretty: fmt.Sprintf(`
 SPIFFE ID:		spiffe://example.org/foo
+HINT:			external
 SVID Valid After:	%v
 SVID Valid Until:	%v
 CA #1 Valid After:	%v
@@ -244,6 +250,7 @@ CA #1 Valid Until:	%v
   "svids": [
     {
       "bundle": "%s",
+      "hint": "external",
       "spiffe_id": "spiffe://example.org/foo",
       "x509_svid": "%s",
       "x509_svid_key": "%s"
@@ -300,6 +307,7 @@ Writing bundle #0 to file %s
   "svids": [
     {
       "bundle": "%s",
+      "hint": "",
       "spiffe_id": "spiffe://example.org/foo",
       "x509_svid": "%s",
       "x509_svid_key": "%s"
