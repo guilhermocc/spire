@@ -3,7 +3,7 @@ module github.com/spiffe/spire
 go 1.20
 
 require (
-	cloud.google.com/go/iam v1.1.0
+	cloud.google.com/go/iam v1.1.1
 	cloud.google.com/go/kms v1.12.1
 	cloud.google.com/go/secretmanager v1.11.1
 	cloud.google.com/go/security v1.15.1
@@ -73,8 +73,8 @@ require (
 	golang.org/x/sys v0.10.0
 	golang.org/x/time v0.3.0
 	google.golang.org/api v0.130.0
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230629202037-9506855d4529
-	google.golang.org/grpc v1.56.1
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98
+	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/square/go-jose.v2 v2.6.0
 	k8s.io/api v0.27.3
@@ -85,10 +85,10 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.110.2 // indirect
-	cloud.google.com/go/compute v1.20.0 // indirect
+	cloud.google.com/go v0.110.4 // indirect
+	cloud.google.com/go/compute v1.21.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	cloud.google.com/go/longrunning v0.5.0 // indirect
+	cloud.google.com/go/longrunning v0.5.1 // indirect
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/AliyunContainerService/ack-ram-tool/pkg/credentials/alibabacloudsdkgo/helper v0.2.0 // indirect
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
@@ -156,7 +156,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
-	github.com/envoyproxy/protoc-gen-validate v1.0.1 // indirect
+	github.com/envoyproxy/protoc-gen-validate v1.0.2 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fatih/color v1.15.0 // indirect
@@ -308,14 +308,14 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
 	golang.org/x/mod v0.11.0 // indirect
-	golang.org/x/oauth2 v0.9.0 // indirect
+	golang.org/x/oauth2 v0.10.0 // indirect
 	golang.org/x/term v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
-	golang.org/x/tools v0.9.3 // indirect
+	golang.org/x/tools v0.10.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230629202037-9506855d4529 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20230629202037-9506855d4529 // indirect
+	google.golang.org/genproto v0.0.0-20230711160842-782d3b101e98 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
